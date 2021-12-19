@@ -1,4 +1,5 @@
 project/target/*
 target/*
 data/*
-/.idea/
+.idea/
+/project/
