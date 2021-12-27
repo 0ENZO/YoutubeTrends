@@ -29,15 +29,7 @@ object Application {
     println("dfVideos")
     dfVideos.show(1, truncate = false)
 
-    val requested_category = dfCategories.first().getAs[String]("id")
-    println(s"requested categ : $requested_category")
-    val videosOfCategory1 = dfVideos.filter(s"category_id == ${requested_category}")
-
-    videosOfCategory1.show(10, truncate = false)
-    println(videosOfCategory1.count())
-    videosOfCategory1.foreach(x => {
-      println(x.getAs[String]("title"))
-    })
+    getVideosFromCategory(dfVideos , dfCategories.first()).show(10)
   }
 
   def readFiles(spark: SparkSession): (DataFrame, DataFrame) = {
@@ -53,5 +45,19 @@ object Application {
         exit(1)
       }
     }
+  }
+
+  def getVideosFromCategory(dfVideos : DataFrame, category : Row ): DataFrame = {
+    val category_id = category.getAs[String]("id")
+    println(s"requested categ : $category_id")
+    val videosOfCategory1 = dfVideos.filter(s"category_id == ${category_id}")
+
+
+    println(s"filtered ${videosOfCategory1.count()} videos")
+//    videosOfCategory1.foreach(x => {
+//      println(x.getAs[String]("title"))
+//    })
+
+    videosOfCategory1
   }
 }
