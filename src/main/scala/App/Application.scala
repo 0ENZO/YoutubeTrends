@@ -1,6 +1,8 @@
 package App
 
 import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.catalyst.dsl.expressions.{DslExpression, StringToAttributeConversionHelper}
+import org.apache.spark.sql.functions.row_number
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import readers.{CsvReader, JsonReader}
 
@@ -29,7 +31,8 @@ object Application {
     println("dfVideos")
     dfVideos.show(1, truncate = false)
 
-    getVideosFromCategory(dfVideos , dfCategories.first()).show(10)
+//    getVideosFromCategory(dfVideos , dfCategories.collectAsList().get(0).getAs[String]("id")).show(10)
+//    meanDislikesPerCategory(dfVideos, dfCategories)
   }
 
   def readFiles(spark: SparkSession): (DataFrame, DataFrame) = {
@@ -47,8 +50,7 @@ object Application {
     }
   }
 
-  def getVideosFromCategory(dfVideos : DataFrame, category : Row ): DataFrame = {
-    val category_id = category.getAs[String]("id")
+  def getVideosFromCategory(dfVideos : DataFrame, category_id : String ): DataFrame = {
     println(s"requested categ : $category_id")
     val videosOfCategory1 = dfVideos.filter(s"category_id == ${category_id}")
 
@@ -59,5 +61,12 @@ object Application {
 //    })
 
     videosOfCategory1
+  }
+
+  def meanDislikesPerCategory(dfVideos : DataFrame, dfCategories : DataFrame): DataFrame = {
+    val dfVidsSorted = dfVideos.groupBy("category_id").mean("dislikes")
+
+    dfVidsSorted.show(truncate = false , numRows = 20)
+    dfVidsSorted
   }
 }
