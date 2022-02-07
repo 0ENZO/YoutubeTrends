@@ -16,6 +16,11 @@ object Application {
 
   def main(args: Array[String]): Unit = {
 
+/*       TODO    apres le join de mergeData il faudrait juste récupérer la partie avec le nom de la catégorie et
+          jeter les autres trucs genre etag , description... des trucs qui servent pas trop trop je trouve
+          après si tu veux faire d'autres traitements t'es 100% libre copain
+*/
+
     val spark = SparkSession
       .builder()
       .appName("TP1")
@@ -30,14 +35,14 @@ object Application {
     println("dfVideos")
     dfVideos.show(1, truncate = false)
 
-//    getVideosFromCategory(dfVideos , dfCategories.collectAsList().get(0).getAs[String]("id")).show(10)
-//    meanDislikesPerCategory(dfVideos, dfCategories)
+    getVideosFromCategory(dfVideos , dfCategories.collectAsList().get(0).getAs[String]("id")).show(10)
+    meanDislikesPerCategory(dfVideos, dfCategories)
     mergeData(dfVideos, dfCategories)
   }
 
   def readFiles(spark: SparkSession , lang : String): (DataFrame, DataFrame) = {
     try {
-      val df = new JsonReader(spark).read(s"data/${lang}_category_id.json")
+      val df = new JsonReader(spark).read(s"data/category_id.json")
 
       val df2 = new CsvReader(spark).read(s"data/${lang}videos.csv")
       (df, df2)
