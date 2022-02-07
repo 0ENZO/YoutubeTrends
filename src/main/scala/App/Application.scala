@@ -1,7 +1,6 @@
 package App
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import readers.{CsvReader, JsonReader}
 
