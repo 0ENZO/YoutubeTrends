@@ -1,12 +1,11 @@
 package App
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession, functions}
 import readers.{CsvReader, JsonReader}
 
 import java.io.FileNotFoundException
 import scala.sys.exit
-
 
 object Application {
 
@@ -37,6 +36,8 @@ object Application {
     getVideosFromCategory(dfVideos , dfCategories.collectAsList().get(0).getAs[String]("id")).show(10)
     meanDislikesPerCategory(dfVideos, dfCategories)
     mergeData(dfVideos, dfCategories)
+
+
   }
 
   def readFiles(spark: SparkSession , lang : String): (DataFrame, DataFrame) = {
@@ -73,7 +74,7 @@ object Application {
 //    videosOfCategory1.foreach(x => {
 //      println(x.getAs[String]("title"))
 //    })
-
+    println("AIE !!!! " , dfVideos.agg(functions.max("category_id")).show)
     videosOfCategory1
   }
 
