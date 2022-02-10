@@ -146,8 +146,12 @@ object Application {
 
   def getBestRatioPerXX(dfVideos: DataFrame, columnToGroup: String = "category_id", orderAsc: Boolean = false): DataFrame = {
     val newColumn = "ratio UP/DOWN"
+    val newColumnLikes = "proportion de likes"
+    val newColumnDislikes = "proportion de dislikes"
     getMeanLikesDislikesPerXX(dfVideos, columnToGroup)
       .withColumn(newColumn, format_number(col("Moyenne de likes.avg(likes)") / (col("Moyenne de dislikes.avg(dislikes)") + 0.01), 2).cast("Int"))
+      .withColumn(newColumnLikes , format_number( (col("Moyenne de likes.avg(likes)") / (col("Moyenne de likes.avg(likes)") + col("Moyenne de dislikes.avg(dislikes)")) ) * 100 , 2))
+      .withColumn(newColumnDislikes , format_number( (col("Moyenne de dislikes.avg(dislikes)") / (col("Moyenne de likes.avg(likes)") + col("Moyenne de dislikes.avg(dislikes)")) ) * 100 , 2))
       .sort(if (orderAsc) asc(newColumn) else {
         desc(newColumn)
       })
