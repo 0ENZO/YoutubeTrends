@@ -43,9 +43,9 @@ object Application {
       "KR" -> "Asia",
       "RU" -> "Russia"
     )
-    // val globalVideosDf = getGlobalVideosDf(spark, lang_code_to_continent) // Supprimer première ligne
+    val globalVideosDf = getGlobalVideosDf(spark, lang_code_to_continent) // Supprimer première ligne
     // globalVideosDf.filter(row => row != globalVideosDf.first())
-    // globalVideosDf.show()
+    globalVideosDf.show()
 
     val FR_df = readVideosFile(spark, "FR")
     // getMostTrendingChannels(FR_df)
@@ -53,7 +53,7 @@ object Application {
     // getCategoryMostWatchForSpecificYear(FR_df, "2018")
     // getMostWatchedCategoryForEachYear(spark, FR_df)
     // getMostWatchedChannelsForSpecificYear(FR_df, "2018")
-    getMostTrendingsVideos(FR_df)
+    // getMostTrendingsVideos(FR_df)
 
     sys.exit(0)
 
@@ -144,7 +144,7 @@ object Application {
 
   def getGlobalVideosDf(spark: SparkSession, lang_code_to_continent: Map[String, String]): DataFrame = {
     val x = getListOfFiles(s"data/")
-    val main_df = createEmptyDF(spark)
+    var main_df = createEmptyDF(spark)
 
     x.foreach(e =>
       if (e.toString().endsWith("v")){ // .csv
@@ -154,7 +154,8 @@ object Application {
         val df2 = df
           .withColumn("lang_code", lit(lang_code))
           .withColumn("continent", lit(lang_code_to_continent.get(lang_code).get))
-        main_df.unionAll(df2)
+        main_df = main_df.union(df2)
+        main_df.show()
       })
     //val final_df = main_df.filter(row => row != main_df.first())
     main_df
@@ -208,15 +209,17 @@ object Application {
       .show()
   }
 
-def getMostTrendingsVideos(dfVideos: DataFrame): Unit ={
+  def getMostTrendingsVideos(dfVideos: DataFrame): Unit ={
 
-  val df = dfVideos
-    .select("title", "channel_title", "category_id", "views", "trending_date", "publish_time")
-    .withColumn("publish_time", df("publish_time").cast(DateType))
-    //.withColumn("publish_time", date_format(to_date(col("publish_time"),"MM/dd/yyyy"), "yyyyMMdd"))
-    //.withColumn("days_diff", datediff(col("trending_date"), col("publish_time" )))
-    .sort(desc("days_diff"))
-    .show()
-}
+    /*
+    val df = dfVideos
+      .select("title", "channel_title", "category_id", "views", "trending_date", "publish_time")
+      .withColumn("publish_time", df("publish_time").cast(DateType))
+      //.withColumn("publish_time", date_format(to_date(col("publish_time"),"MM/dd/yyyy"), "yyyyMMdd"))
+      //.withColumn("days_diff", datediff(col("trending_date"), col("publish_time" )))
+      .sort(desc("days_diff"))
+      .show()
+    */
+  }
 }
 
