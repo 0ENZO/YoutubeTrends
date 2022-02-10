@@ -2,7 +2,7 @@ name := "YoutubeTrends"
 
 version := "0.1"
 
-scalaVersion := "2.12.15"
+scalaVersion := "2.12.3"
 
 libraryDependencies += "xyz.devfortress.splot" % "splot-core_2.12" % "0.4.0"
 libraryDependencies += "org.apache.spark" %% "spark-core" % "3.1.2"
