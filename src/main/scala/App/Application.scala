@@ -23,8 +23,10 @@ object Application {
       .master("local[*]")
       .getOrCreate()
 
+    import spark.implicits._
+
     val lang_code_to_continent = Map[String, String](
-//      "FR" -> "Europe",
+      "FR" -> "Europe",
       "DE" -> "Europe",
       "GB" -> "Europe",
       "CA" -> "North_America",
@@ -35,10 +37,13 @@ object Application {
       "KR" -> "Asia",
       "RU" -> "Russia"
     )
-
+    val fr_videos = readVideosFile(spark, "FR")
     val dfCategories = readCategoriesFile(spark)
-    val globalVideosDf = getGlobalVideosDf(spark, lang_code_to_continent)
-    // globalVideosDf.filter(row => row != globalVideosDf.first())
+
+    /*
+    var globalVideosDf = getGlobalVideosDf(spark, lang_code_to_continent)
+    //globalVideosDf.filter(row => row != globalVideosDf.first())
+    //globalVideosDf.show()
     println(s"Dataframe de ${globalVideosDf.count()} videos")
 
     println("dfCategories")
@@ -47,32 +52,33 @@ object Application {
     println("globalVideosDf")
     globalVideosDf.show(1, truncate = false)
 
-    //     getMostTrendingChannels(FR_df)
-
-    val artist = "GMK"
+    //getMostTrendingChannels(FR_df)
+*/
+    val artist = "SQUEEZIE"
     println(s"getTotalViewsPerCategoryForSpecificChannel $artist")
-    getTotalViewsPerCategoryForSpecificChannel(spark, globalVideosDf, artist).show()
+    getTotalViewsPerCategoryForSpecificChannel(spark, fr_videos, artist).show()
 
+    sys.exit(0)
     val yearRequested = "2018"
     println(s"getMostWatchedChannelsForSpecificYear $yearRequested")
-    getMostWatchedChannelsForSpecificYear(globalVideosDf, yearRequested).show()
+    getMostWatchedChannelsForSpecificYear(fr_videos, yearRequested).show()
 
     println("getMostWatchedCategoryForEachYear")
-    getMostWatchedCategoryForEachYear(spark, globalVideosDf).show()
+    getMostWatchedCategoryForEachYear(spark, fr_videos).show()
     //     getMostTrendingsVideos(FR_df).show()
 
     val requestedCategory = "1"
     println(s"getVideosFromCategory  : $requestedCategory")
-    getVideosFromCategory(globalVideosDf, requestedCategory).show(1)
+    getVideosFromCategory(fr_videos, requestedCategory).show(1)
 
     println("mergeVideosWithCategories")
-    mergeVideosWithCategories(globalVideosDf, dfCategories).show(1)
+    mergeVideosWithCategories(fr_videos, dfCategories).show(1)
 
     println("getMeanLikesDislikesPerXX")
-    getMeanLikesDislikesPerXX(globalVideosDf).show()
+    getMeanLikesDislikesPerXX(fr_videos).show()
 
     println("getBestRatioPerXX")
-    getBestRatioPerXX(globalVideosDf , orderAsc = true).show()
+    getBestRatioPerXX(fr_videos , orderAsc = true).show()
   }
 
   def readVideosFile(spark: SparkSession, lang: String): (DataFrame) = {
@@ -166,25 +172,21 @@ object Application {
     }
   }
 
-//  def createEmptyDF(spark: SparkSession): DataFrame = {
-//    import spark.implicits._
-//
-//    val emptyData = Seq(("", "", "", "", "", "", "", "", "", "", "", "", true, true, true, "", "", ""))
-//    val df = emptyData.toDF(
-//      "video_id", "trending_date", "title", "channel_title", "category_id", "publish_time",
-//      "tags", "views", "likes", "dislikes", "comment_count", "thumbnail_link", "comments_disabled",
-//      "ratings_disabled", "video_error_or_removed", "description", "lang_code", "continent")
-//
-//    df.filter($"video_id" === "" )
-//  }
+  def createEmptyDF(spark: SparkSession): DataFrame = {
+    import spark.implicits._
+
+    val emptyData = Seq(("", "", "", "", "", "", "", 0, 0, 0, 0, "", true, true, true, "", "", ""))
+    val df = emptyData.toDF(
+      "video_id", "trending_date", "title", "channel_title", "category_id", "publish_time",
+      "tags", "views", "likes", "dislikes", "comment_count", "thumbnail_link", "comments_disabled",
+      "ratings_disabled", "video_error_or_removed", "description", "lang_code", "continent")
+
+    df
+  }
 
   def getGlobalVideosDf(spark: SparkSession, lang_code_to_continent: Map[String, String]): DataFrame = {
     val x = getListOfFiles(s"data/")
-//    var main_df = createEmptyDF(spark)
-    var main_df = new CsvReader(spark).read(s"data/CAvideos.csv")
-      .withColumn("lang_code", lit("FR"))
-      .withColumn("continent", lit("Europe"))
-
+    var main_df = createEmptyDF(spark)
 
     x.foreach(e =>
       if (e.toString.endsWith("v")) { // .csv
