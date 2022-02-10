@@ -42,28 +42,21 @@ object Application {
     val fr_videos = readVideosFile(spark, "FR")
     val dfCategories = readCategoriesFile(spark)
 
-    doTrendingsVideosHaveDescription(fr_videos)
-    doMostViewedVideosAreTheMostCommentedOnes(fr_videos)
-    sys.exit(0)
-    /*
     var globalVideosDf = getGlobalVideosDf(spark, lang_code_to_continent)
     //globalVideosDf.filter(row => row != globalVideosDf.first())
-    //globalVideosDf.show()
+    globalVideosDf.show()
     println(s"Dataframe de ${globalVideosDf.count()} videos")
 
     println("dfCategories")
     dfCategories.show(1, truncate = false)
 
-    println("globalVideosDf")
-    globalVideosDf.show(1, truncate = false)
+    //println("globalVideosDf")
+    //globalVideosDf.show(1, truncate = false)
 
     //getMostTrendingChannels(FR_df)
-*/
-
     val mergedDf = mergeVideosWithCategories(fr_videos, dfCategories)
     println("mergeVideosWithCategories")
     mergedDf.show(1)
-
 
     val artist = "SQUEEZIE"
     println(s"getTotalViewsPerCategoryForSpecificChannel $artist")
@@ -75,7 +68,7 @@ object Application {
 
     println("getMostWatchedCategoryForEachYear")
     getMostWatchedCategoryForEachYear(spark, mergedDf).show()
-    //     getMostTrendingsVideos(FR_df).show()
+    //getMostTrendingsVideos(FR_df).show()
 
     val requestedCategory = "1"
     println(s"getVideosFromCategory  : $requestedCategory")
@@ -86,6 +79,12 @@ object Application {
 
     println("getBestRatioPerXX")
     getBestRatioPerXX(mergedDf , orderAsc = true).show()
+
+    println("doTrendingsVideosHaveDescription")
+    doTrendingsVideosHaveDescription(fr_videos)
+
+    println("doMostViewedVideosAreTheMostCommentedOnes")
+    doMostViewedVideosAreTheMostCommentedOnes(fr_videos)
   }
 
   def readVideosFile(spark: SparkSession, lang: String): (DataFrame) = {
@@ -217,28 +216,21 @@ object Application {
   }
 
   def doMostViewedVideosAreTheMostCommentedOnes(dfVideos : DataFrame) = {
-    val commentsAvg = dfVideos
+    val df = dfVideos
+      .filter(col("comment_count") > lit(0))
       .orderBy(desc("views"))
       .limit(100)
-      .select(avg("comment_count")).collect()(0)(0).toString().toDouble
+
+    val commentsAvg = df
+      .select(avg("comment_count")).collect()(0)(0).toString().toDouble // A remplacer par la médiane
 
     println("Moyenne du nombre des commentaires des 100 vidéos les plus vues : " + commentsAvg)
 
-    dfVideos
+    df
       .select("title", "channel_title", "views", "comment_count", "category_id")
-      .orderBy(desc("views"))
-      .limit(100)
       .withColumn("comment_count", round(col("comment_count").cast(DoubleType), 2))
-      .withColumn("Pourcentage de commentaires par rapport à la moyenne", ((col("comment_count") - commentsAvg) / commentsAvg) * 100)
+      .withColumn("Pourcentage de commentaires par rapport à la moyenne", concat_ws("", round(((col("comment_count") - commentsAvg) / commentsAvg) * 100, 2), lit("%")))
       .show()
-
-    // val x = dfVideos.select(avg("comment_count")).collect()(0)(0).toString().toDoubl
-    // val commentsAvg = 0.0 - x
-    //(comment_count - comment_avg / comment_avg ) * 100
-    //val commentsAvg = 0.0 - y
-    //.withColumn("comment_avg_minus_count", col("comment_count") + commentsAvg)
-    //.withColumn("Pourcentage de commentaires par rapport à la moyenne", (col("comment_avg_minus_count") / commentsAvg) * 100)
-    //((col(("comment_count") + commentsAvg) / dfVideos.select(avg("comment_count")).collect()(0)(0).toString().toDouble )* 100))
   }
 
   def getTotalViewsPerCategoryForSpecificChannel(spark: SparkSession, dfVideos: DataFrame, yt_channel_title: String): DataFrame = {
