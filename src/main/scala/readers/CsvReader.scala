@@ -29,16 +29,15 @@ class CsvReader(sparkSession : SparkSession){
     val df: DataFrame = sparkSession
       .read
       .option("header" , "true")
-//      .option("inferSchema" , "true")
+      //.option("inferSchema" , "true")
       .schema(Schema)
       .csv(filePath)
 
-    println(s"${filePath}'s schema : ")
+    //println(s"${filePath}'s schema : ")
     df.withColumn("likes",col("likes").cast("int"))
     df.withColumn("dislikes",col("likes").cast(IntegerType))
-    df.printSchema()
-//    df.show()
-
+    //df.printSchema()
+    //df.show()
     df
   }
 }
