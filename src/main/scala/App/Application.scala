@@ -6,9 +6,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession, functions}
 import readers.{CsvReader, JsonReader}
 import java.io.{File, FileNotFoundException}
-
 import org.apache.spark.sql.types.DoubleType
-
 import scala.sys.exit
 
 
@@ -39,8 +37,8 @@ object Application {
       "KR" -> "Asia",
       "RU" -> "Russia"
     )
-    val fr_videos = readVideosFile(spark, "FR")
     val dfCategories = readCategoriesFile(spark)
+    val fr_videos = mergeVideosWithCategories(readVideosFile(spark, "FR"), dfCategories)
 
     var globalVideosDf = getGlobalVideosDf(spark, lang_code_to_continent)
     //globalVideosDf.filter(row => row != globalVideosDf.first())
@@ -50,35 +48,29 @@ object Application {
     println("dfCategories")
     dfCategories.show(1, truncate = false)
 
-    //println("globalVideosDf")
-    //globalVideosDf.show(1, truncate = false)
-
-    //getMostTrendingChannels(FR_df)
-    val mergedDf = mergeVideosWithCategories(fr_videos, dfCategories)
     println("mergeVideosWithCategories")
-    mergedDf.show(1)
+    mergeVideosWithCategories(fr_videos, dfCategories).show(1)
 
-    val artist = "SQUEEZIE"
+    val artist = "Anil B"
     println(s"getTotalViewsPerCategoryForSpecificChannel $artist")
-    getTotalViewsPerCategoryForSpecificChannel(spark, mergedDf, artist).show()
+    getTotalViewsPerCategoryForSpecificChannel(spark, fr_videos, artist).show()
 
     val yearRequested = "2018"
     println(s"getMostWatchedChannelsForSpecificYear $yearRequested")
     getMostWatchedChannelsForSpecificYear(fr_videos, yearRequested).show()
 
     println("getMostWatchedCategoryForEachYear")
-    getMostWatchedCategoryForEachYear(spark, mergedDf).show()
-    //getMostTrendingsVideos(FR_df).show()
+    getMostWatchedCategoryForEachYear(spark, fr_videos).show()
 
     val requestedCategory = "1"
     println(s"getVideosFromCategory  : $requestedCategory")
     getVideosFromCategory(fr_videos, requestedCategory).show(1)
 
     println("getMeanLikesDislikesPerXX")
-    getMeanLikesDislikesPerXX(fr_videos).show()
+    getMeanLikesDislikesPerXX(fr_videos, "category_name").show()
 
     println("getBestRatioPerXX")
-    getBestRatioPerXX(mergedDf , orderAsc = true).show()
+    getBestRatioPerXX(fr_videos , orderAsc = true).show()
 
     println("doTrendingsVideosHaveDescription")
     doTrendingsVideosHaveDescription(fr_videos)
@@ -127,7 +119,7 @@ object Application {
           )
         ).getItem(0)
       )
-      .drop("etag", "kind", "id", "snippet", "thumbnail_link" )
+      .drop("etag", "id", "kind", "snippet", "video_id", "thumbnail_link", "tags" )
   }
 
   def getVideosFromCategory(dfVideos: DataFrame, category_id: String): DataFrame = {
@@ -140,7 +132,7 @@ object Application {
     videosOfCategory1
   }
 
-  def getMeanLikesDislikesPerXX(dfVideos: DataFrame, columnToGroup: String = "category_id"): DataFrame = {
+  def getMeanLikesDislikesPerXX(dfVideos: DataFrame, columnToGroup: String): DataFrame = {
     val dfLikes = dfVideos
       .withColumnRenamed(columnToGroup, columnToGroup + "_tmp")
       .groupBy(columnToGroup + "_tmp")
@@ -227,7 +219,7 @@ object Application {
     println("Moyenne du nombre des commentaires des 100 vidéos les plus vues : " + commentsAvg)
 
     df
-      .select("title", "channel_title", "views", "comment_count", "category_id")
+      .select("title", "channel_title", "views", "comment_count", "category_name")
       .withColumn("comment_count", round(col("comment_count").cast(DoubleType), 2))
       .withColumn("Pourcentage de commentaires par rapport à la moyenne", concat_ws("", round(((col("comment_count") - commentsAvg) / commentsAvg) * 100, 2), lit("%")))
       .show()
