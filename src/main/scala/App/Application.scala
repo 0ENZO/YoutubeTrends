@@ -67,10 +67,10 @@ object Application {
     getVideosFromCategory(fr_videos, requestedCategory).show(1)
 
     println("getMeanLikesDislikesPerXX")
-    getMeanLikesDislikesPerXX(fr_videos, "category_name").show()
+    getMeanLikesDislikesPerXX(spark, fr_videos, "category_name").show()
 
     println("getBestRatioPerXX")
-    getBestRatioPerXX(fr_videos , orderAsc = true).show()
+    getBestRatioPerXX(spark, fr_videos , "category_name").show()
 
     println("doTrendingsVideosHaveDescription")
     doTrendingsVideosHaveDescription(fr_videos)
@@ -132,7 +132,9 @@ object Application {
     videosOfCategory1
   }
 
-  def getMeanLikesDislikesPerXX(dfVideos: DataFrame, columnToGroup: String): DataFrame = {
+  def getMeanLikesDislikesPerXX(spark: SparkSession, dfVideos: DataFrame, columnToGroup: String): DataFrame = {
+    import spark.implicits._
+
     val dfLikes = dfVideos
       .withColumnRenamed(columnToGroup, columnToGroup + "_tmp")
       .groupBy(columnToGroup + "_tmp")
@@ -144,21 +146,21 @@ object Application {
     dfLikes
       .join(
         dfDislikes,
-        dfDislikes(columnToGroup) === dfLikes(columnToGroup + "_tmp")
-      ).drop(columnToGroup + "_tmp")
+        dfDislikes(columnToGroup) === dfLikes(columnToGroup + "_tmp"))
+      .drop(columnToGroup + "_tmp")
+      .withColumn("avg(dislikes)", round($"avg(dislikes)", 0))
+      .withColumn("avg(likes)", round($"avg(likes)", 0))
   }
 
-  def getBestRatioPerXX(dfVideos: DataFrame, columnToGroup: String = "category_name", orderAsc: Boolean = false): DataFrame = {
+  def getBestRatioPerXX(spark: SparkSession, dfVideos: DataFrame, columnToGroup: String): DataFrame = {
     val newColumn = "ratio UP/DOWN"
-    val newColumnLikes = "proportion de likes"
-    val newColumnDislikes = "proportion de dislikes"
-    getMeanLikesDislikesPerXX(dfVideos, columnToGroup)
-      .withColumn(newColumn, format_number(col("Moyenne de likes.avg(likes)") / (col("Moyenne de dislikes.avg(dislikes)") + 0.01), 2).cast("Int"))
-      .withColumn(newColumnLikes , format_number( (col("Moyenne de likes.avg(likes)") / (col("Moyenne de likes.avg(likes)") + col("Moyenne de dislikes.avg(dislikes)")) ) * 100 , 2))
-      .withColumn(newColumnDislikes , format_number( (col("Moyenne de dislikes.avg(dislikes)") / (col("Moyenne de likes.avg(likes)") + col("Moyenne de dislikes.avg(dislikes)")) ) * 100 , 2))
-      .sort(if (orderAsc) asc(newColumn) else {
-        desc(newColumn)
-      })
+    val newColumnLikes = "likes %"
+    val newColumnDislikes = "dislikes %"
+    getMeanLikesDislikesPerXX(spark, dfVideos, columnToGroup)
+      .withColumn(newColumn, format_number(col("avg(likes)") / (col("avg(dislikes)") + 0.01), 2).cast("Double"))
+      .withColumn(newColumnLikes , concat_ws("", format_number( (col("avg(likes)") / (col("avg(likes)") + col("avg(dislikes)")) ) * 100 , 2), lit("%")))
+      .withColumn(newColumnDislikes , concat_ws("", format_number( (col("avg(dislikes)") / (col("avg(likes)") + col("avg(dislikes)")) ) * 100 , 2), lit("%")))
+      .sort(col("ratio UP/DOWN").desc)
   }
 
   def getListOfFiles(dir: String): List[File] = {
