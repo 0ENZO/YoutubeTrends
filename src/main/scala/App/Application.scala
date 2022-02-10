@@ -5,8 +5,10 @@ import org.apache.spark.sql.expressions.{Window, WindowSpec}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SparkSession, functions}
 import readers.{CsvReader, JsonReader}
-
 import java.io.{File, FileNotFoundException}
+
+import org.apache.spark.sql.types.DoubleType
+
 import scala.sys.exit
 
 
@@ -40,6 +42,9 @@ object Application {
     val fr_videos = readVideosFile(spark, "FR")
     val dfCategories = readCategoriesFile(spark)
 
+    doTrendingsVideosHaveDescription(fr_videos)
+    doMostViewedVideosAreTheMostCommentedOnes(fr_videos)
+    sys.exit(0)
     /*
     var globalVideosDf = getGlobalVideosDf(spark, lang_code_to_continent)
     //globalVideosDf.filter(row => row != globalVideosDf.first())
@@ -207,16 +212,34 @@ object Application {
     main_df
   }
 
-  /*
-  def getMostTrendingChannels(dfVideos : DataFrame): Unit = {
-    val df = dfVideos
-      .groupBy("channel_title")
-      .agg(sum("views")).as("total_views")
-      .orderBy("total_views")
-      .show(15)
+  def doTrendingsVideosHaveDescription(dfVideos: DataFrame) = {
+    println((dfVideos.filter(col("description").isNull || col("description") === "").count().toDouble / dfVideos.count().toDouble * 100).round + "% de vidéos n'ont pas de description")
+  }
 
-    //val df = dfVideos.agg(sum("views").as("total_views"), sum("col2").as("sum_col2"), ...).first
-  }*/
+  def doMostViewedVideosAreTheMostCommentedOnes(dfVideos : DataFrame) = {
+    val commentsAvg = dfVideos
+      .orderBy(desc("views"))
+      .limit(100)
+      .select(avg("comment_count")).collect()(0)(0).toString().toDouble
+
+    println("Moyenne du nombre des commentaires des 100 vidéos les plus vues : " + commentsAvg)
+
+    dfVideos
+      .select("title", "channel_title", "views", "comment_count", "category_id")
+      .orderBy(desc("views"))
+      .limit(100)
+      .withColumn("comment_count", round(col("comment_count").cast(DoubleType), 2))
+      .withColumn("Pourcentage de commentaires par rapport à la moyenne", ((col("comment_count") - commentsAvg) / commentsAvg) * 100)
+      .show()
+
+    // val x = dfVideos.select(avg("comment_count")).collect()(0)(0).toString().toDoubl
+    // val commentsAvg = 0.0 - x
+    //(comment_count - comment_avg / comment_avg ) * 100
+    //val commentsAvg = 0.0 - y
+    //.withColumn("comment_avg_minus_count", col("comment_count") + commentsAvg)
+    //.withColumn("Pourcentage de commentaires par rapport à la moyenne", (col("comment_avg_minus_count") / commentsAvg) * 100)
+    //((col(("comment_count") + commentsAvg) / dfVideos.select(avg("comment_count")).collect()(0)(0).toString().toDouble )* 100))
+  }
 
   def getTotalViewsPerCategoryForSpecificChannel(spark: SparkSession, dfVideos: DataFrame, yt_channel_title: String): DataFrame = {
     import spark.implicits._
@@ -253,18 +276,16 @@ object Application {
     df.withColumn("row", row_number.over(windowDept))
       .where($"row" === 1).drop("row")
   }
-  //  def getMostTrendingsVideos(dfVideos: DataFrame): Unit ={
-
 
   /*
-  val df = dfVideos
-    .select("title", "channel_title", "category_id", "views", "trending_date", "publish_time")
-    .withColumn("publish_time", df("publish_time").cast(DateType))
-    //.withColumn("publish_time", date_format(to_date(col("publish_time"),"MM/dd/yyyy"), "yyyyMMdd"))
-    //.withColumn("days_diff", datediff(col("trending_date"), col("publish_time" )))
-    .sort(desc("days_diff"))
-    .show()
-  */
-  //  }
+  def getMostTrendingChannels(dfVideos : DataFrame): Unit = {
+    val df = dfVideos
+      .groupBy("channel_title")
+      .agg(sum("views")).as("total_views")
+      .orderBy("total_views")
+      .show(15)
+
+    //val df = dfVideos.agg(sum("views").as("total_views"), sum("col2").as("sum_col2"), ...).first
+  }*/
 }
 
