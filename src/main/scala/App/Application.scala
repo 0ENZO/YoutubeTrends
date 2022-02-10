@@ -54,31 +54,33 @@ object Application {
 
     //getMostTrendingChannels(FR_df)
 */
+
+    val mergedDf = mergeVideosWithCategories(fr_videos, dfCategories)
+    println("mergeVideosWithCategories")
+    mergedDf.show(1)
+
+
     val artist = "SQUEEZIE"
     println(s"getTotalViewsPerCategoryForSpecificChannel $artist")
-    getTotalViewsPerCategoryForSpecificChannel(spark, fr_videos, artist).show()
+    getTotalViewsPerCategoryForSpecificChannel(spark, mergedDf, artist).show()
 
-    sys.exit(0)
     val yearRequested = "2018"
     println(s"getMostWatchedChannelsForSpecificYear $yearRequested")
     getMostWatchedChannelsForSpecificYear(fr_videos, yearRequested).show()
 
     println("getMostWatchedCategoryForEachYear")
-    getMostWatchedCategoryForEachYear(spark, fr_videos).show()
+    getMostWatchedCategoryForEachYear(spark, mergedDf).show()
     //     getMostTrendingsVideos(FR_df).show()
 
     val requestedCategory = "1"
     println(s"getVideosFromCategory  : $requestedCategory")
     getVideosFromCategory(fr_videos, requestedCategory).show(1)
 
-    println("mergeVideosWithCategories")
-    mergeVideosWithCategories(fr_videos, dfCategories).show(1)
-
     println("getMeanLikesDislikesPerXX")
     getMeanLikesDislikesPerXX(fr_videos).show()
 
     println("getBestRatioPerXX")
-    getBestRatioPerXX(fr_videos , orderAsc = true).show()
+    getBestRatioPerXX(mergedDf , orderAsc = true).show()
   }
 
   def readVideosFile(spark: SparkSession, lang: String): (DataFrame) = {
@@ -113,7 +115,7 @@ object Application {
         dfCategories,
         dfVideos("category_id") === dfCategories("id")
       )
-      .withColumn("category",
+      .withColumn("category_name",
         functions.reverse(
           functions.split(
             translate(col("snippet").cast("String"), "{} ", "\0\0\0"),
@@ -121,7 +123,7 @@ object Application {
           )
         ).getItem(0)
       )
-      .drop("etag", "kind", "id", "snippet", "id_category")
+      .drop("etag", "kind", "id", "snippet", "thumbnail_link" )
   }
 
   def getVideosFromCategory(dfVideos: DataFrame, category_id: String): DataFrame = {
@@ -150,7 +152,7 @@ object Application {
       ).drop(columnToGroup + "_tmp")
   }
 
-  def getBestRatioPerXX(dfVideos: DataFrame, columnToGroup: String = "category_id", orderAsc: Boolean = false): DataFrame = {
+  def getBestRatioPerXX(dfVideos: DataFrame, columnToGroup: String = "category_name", orderAsc: Boolean = false): DataFrame = {
     val newColumn = "ratio UP/DOWN"
     val newColumnLikes = "proportion de likes"
     val newColumnDislikes = "proportion de dislikes"
@@ -221,9 +223,9 @@ object Application {
 
     val df = dfVideos
       .filter($"channel_title" === yt_channel_title)
-      .groupBy("channel_title", "category_id")
-      .agg(sum($"views").as("total_views"), count($"category_id").as("cpt"))
-      .select(concat_ws("", $"category_id", lit(" ("), $"cpt", lit(")")).as("Nombre de vues par catégories"), $"total_views")
+      .groupBy("channel_title", "category_name")
+      .agg(sum($"views").as("total_views"), count($"category_name").as("cpt"))
+      .select(concat_ws("", $"category_name", lit(" ("), $"cpt", lit(")")).as("Nombre de vues par catégorie"), $"total_views")
 
     df
   }
@@ -242,11 +244,12 @@ object Application {
 
     val df = dfVideos
       .na.drop()
-      .groupBy(year(col("publish_time")).as("year"), col("category_id"))
+      .groupBy(year(col("publish_time")).as("year"), col("category_name"))
       .agg(sum("views").as("total_views"))
       .sort(year(col("publish_time")))
 
     val windowDept = Window.partitionBy(col("year")).orderBy(col("total_views").desc)
+
     df.withColumn("row", row_number.over(windowDept))
       .where($"row" === 1).drop("row")
   }
